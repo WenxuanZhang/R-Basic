@@ -121,3 +121,98 @@ map2_dbl(xs, ws, weighted.mean, na.rm = TRUE)
 
 
 
+welcome <- function(x) {
+  cat("Welcome ", x, "!\n", sep = "")
+}
+names <- c("Hadley", "Jenny")
+
+
+map(names, welcome)
+
+walk(names, welcome)
+
+
+temp <- tempfile()
+dir.create(temp)
+
+cyls <- split(mtcars, mtcars$cyl)
+paths <- file.path(temp, paste0("cyl-", names(cyls), ".csv"))
+walk2(cyls, paths, write.csv)
+
+dir(temp)
+#> [1] "cyl-4.csv" "cyl-6.csv" "cyl-8.csv"
+
+
+x <- map(1:6, ~ sample(1000, 10))
+imap_chr(x, ~ paste0("The highest value of ", .y, " is ", max(.x)))
+
+
+pmap_dbl(list(xs, ws), weighted.mean)
+pmap_dbl(list(xs, ws), weighted.mean, na.rm = TRUE)
+
+
+trims <- c(0, 0.1, 0.2, 0.5)
+x <- rcauchy(1000)
+
+pmap_dbl(list(trim = trims), mean, x = x)
+#> [1] -6.6740  0.0210  0.0235  0.0151
+
+params <- tibble::tribble(
+  ~ n, ~ min, ~ max,
+  1L,     0,     1,
+  2L,    10,   100,
+  3L,   100,  1000
+)
+
+pmap(params, runif)
+
+
+trans <- list(
+  disp = function(x) x * 0.0163871,
+  am = function(x) factor(x, labels = c("auto", "manual"))
+)
+
+nm <- names(trans)
+mtcars[nm] <- map2(trans, mtcars[nm], function(f, var) f(var))
+
+l <- map(1:4, ~ sample(1:10, 15, replace = T))
+str(l)
+
+
+out <- l[[1]]
+out <- intersect(out, l[[2]])
+out <- intersect(out, l[[3]])
+out <- intersect(out, l[[4]])
+out
+
+reduce(l, intersect)
+
+reduce(l, union)
+
+
+x <- c(4, 3, 10)
+reduce(x, `+`)
+
+accumulate(x, `+`)
+
+
+df <- data.frame(
+  num1 = c(0, 10, 20),
+  num2 = c(5, 6, 7),
+  chr1 = c("a", "b", "c"),
+  stringsAsFactors = FALSE
+)
+
+str(map_if(df, is.numeric, mean))
+#> List of 3
+#>  $ num1: num 10
+#>  $ num2: num 6
+#>  $ chr1: chr [1:3] "a" "b" "c"
+str(modify_if(df, is.numeric, mean))
+#> 'data.frame':    3 obs. of  3 variables:
+#>  $ num1: num  10 10 10
+#>  $ num2: num  6 6 6
+#>  $ chr1: chr  "a" "b" "c"
+str(map(keep(df, is.numeric), mean))
+#> List of 2
+
