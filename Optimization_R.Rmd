@@ -1,0 +1,243 @@
+---
+title: "Optimization"
+author: "Wenxuan Zhang"
+date: '2023-03-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Linear Programming
+Object function & saturation curve are both linear
+
+#### Objective function 
+* Maximize total profit 
+* Product A : 20, Product B : 25
+
+### Resource Constraint  
+* Product A  20 resource and Product B need 12
+* Only 1800 resource available per day 
+
+### Time Constraint 
+* Both product require a production time of 1/15 hour
+* A working day has a total of 8 hours
+
+
+
+```{r cars}
+
+library(lpSolve)
+object.in <- c(25,20)
+const.mat <- matrix(c(20,12,1/15,1/15),nrow = 2, byrow = TRUE)
+const.rhs <- c(1800,8)
+const.dir <- c("<=","<=")
+optimum <- lp(direction = "max", object.in,
+              const.mat,const.dir,const.rhs)
+
+optimum$solution
+optimum$objval
+```
+
+### Quadratic Programming
+Object function is quadratic and constraint are linear
+
+#### One Dimensional Non-Linear Programming 
+
+Golden Section Search can be used to solve one-dimensional non-linear
+problems
+
+##### Basic Steps:
+* Golden Ratio Defined as 0.618
+* Pick an Interval A,b containing the optimum 
+* Evaludate f(x1) at x1 = a + (0.382)*(b-a) vs
+f(x2) at x2 = a + 0.618*(b-a)
+* if f(x1) < f(x2), continue the search in the interval[a,x1] else [x2, b]
+
+###### example 
+
+```{r}
+
+f <- function(x)(print(x)-1/3)^2
+xmin <- optimize(f, interval = c(0,1),tol =0.001)
+
+#example 2: non-differentiable
+f <- function(x) return(abs(x-2)+2*abs(x=1))
+xmin <- optimize(f, interval = c(0,3),tol =0.001)
+
+plot(f,0,3)
+
+```
+
+#### Non-Linear Multi-Dimensional Programming
+
+```{r}
+require(optimx)
+optimx(par,fn, gr = Null, Hess= Null, lower = inf,
+       upper = inf, method = '', itnmax = Null,...)
+
+```
+
+Multiple optimization algorithm possible:
+* Gradient based
+* Hessian based 
+* Non-gradient based: golden section search, nelder-mead
+* if constraint was provided, "L-BFGS-B" is used
+
+Himmelblau's function 
+f(x,y) = (x2 + y - 11)^2 + (x+y^2-7)^2
+
+
+```{r}
+# Himmelblau's function 
+fn <- function(para){
+ matrix.A <- matrix(para, ncol = 2)
+ x <- matrix.A[,1]
+ y <- matrix.A[,2]
+ f.x <- (x^2 + y -11)^2 + (x+y^2-7)^2
+ return(f.x) 
+}
+
+xy <- as.matrix(expand.grid(seq(-5,5,length = 101),
+                            seq(-5,5, length = 101)))
+colnames(xy) <- c("x","y")
+df <- data.frame(fnxy = fn(xy),xy)
+
+library(lattice)
+wireframe(fnxy ~ x*y, data = df, shade = TRUE,
+          drape = FALSE, scale = list(arrows=FALSE),
+          screen = list(z = -240, x = -70, y =0))
+
+```
+
+#### Gradient-Free Method: Nelder-Mead
+
+#### Gradient-Free Method: Gradient Descent 
+
+#### Gradient-Free Method: Newton- Raphson
+
+#### Gradient-Free Method: BFGS and L-BFGS-B
+
+* Gradient information comes from an approximation of Hessian Matrix
+No guaranteed conversion, especially problematic if tayler expansion does not fit well.
+
+
+
+```{r}
+library(optimx)
+fn <- function(x){
+  return(log2(x+1))
+}
+par <- c(1)
+optimx(par,fn, method  = 'Nelder-Mead')
+optimx(par, fn, method = 'CG')
+optimx(par,fn, method = 'BFGS')
+optimx(par,fn,method=c("Nelder-Mead","CG","BFGS","spg","nlm"))
+#-1 should be the optimal value to minimize this target
+
+```
+
+
+### R Optimization Infrastructure
+
+```{r}
+
+ROI_available_solvers()
+
+install.packages('ROI.plugin.glpk')
+install.packages('ROI.plugin.quadprog')
+install.packages('ROI.plugin.symphony')
+
+library(ROI.plugin.glpk)
+lp <- OP(objective = c(2,4,4),
+         L_constraint( 
+           L = matrix(c(3,2,1,4,1,3,2,2,2),nrow =3),
+                      dir = c("<=","<=","<="),
+                      rhs = c(60,40,80))
+           ,maximum = TRUE)
+
+sol <- ROI_solve(lp,solver = 'glpk')
+
+#Solve quadratic problems with linear constraints
+
+library(ROI.plugin.quadprog)
+qp <- OP(Q_objective(Q = diag(1,3),
+                     L = c(0,-5,0)),
+         L_constraint(
+           L = matrix(c(-4,-3,0,2,1,0,0,-2,1),ncol = 3,
+                      byrow = TRUE),
+           dir = rep (">=",3),
+           rhs = c(-8,2,0)
+         )
+         )
+
+sol <- ROI_solve(qp, solver = 'quadprog')
+
+```
+### Application in Stats 
+
+LASSO regression 
+
+```{r}
+
+n <- 100
+x1 <- rnorm(n)
+x2 <- rnorm(n)
+y <- 1 + x1 + x2 + rnorm(n)
+X <- cbind (rep(1,n),x1,x2)
+r <- lm(y~ x1 + x2)
+library(quadprog)
+s <- solve.QP(t(X) %*% X, t(y)%*%X, matrix(nr = 3, nc = 0),numeric(),0)
+coef(r)
+s$solution
+```
+### Optimization inside Quantile Regression
+
+```{r}
+n <- 101
+x <- rlnorm(n)
+library(lpSolve)
+
+A1 <- cbind(diag(2*n),0)
+A2 <- cbind(diag(n),-diag(n),1)
+
+r <- lp('min',
+        c(rep(1, 2*n),0),
+        rbind(A1,A2),
+        c(rep (">=",2*n),rep("=",n)),
+        c(rep(0, 2*n),x))
+tail(r$solution,1)
+median(x)
+
+```
+Introducing tau = .3 allows to calculate quantile regression
+
+```{r}
+require(lpSolve)
+tau <- .3
+n <- 100
+x1 <-rnorm(n)
+x2 <- rnorm(n)
+y <- 1 + x1 + x2 + rnorm(n)
+X <- cbind(rep(1,n),x1,x2)
+A1 <- cbind(diag(2*n),0,0,0)
+A2 <- cbind(diag(n),-diag(n),X)
+
+r <- lp("min",c(rep(tau,n),
+                rep(1-tau,n),0,0,0),
+        rbind(A1,A2),
+        c(rep(">=",2*n),rep ("=",n)),
+        c(rep(0,2*n),y)
+    )
+
+tail(r$solution,3)
+library(quantreg)
+rq(y~x1+x2, tau = 0.5)
+
+
+```
+
+How inscart deliver in time?
+https://www.youtube.com/watch?v=JvIzB3hULCo
