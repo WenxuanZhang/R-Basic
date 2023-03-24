@@ -409,3 +409,171 @@ predict(mylogit,data = mydata[c(1),],type = 'response')[1]
 ```
 Gradient Descent Implementation 
 https://www.r-bloggers.com/2013/12/logistic-regression-with-r-step-by-step-implementation-part-2/
+https://theautomatic.net/2018/10/02/how-to-build-a-logistic-regression-model-from-scratch-in-r/
+
+
+```{r,warning = FALSE}
+# function to update theta via gradient descent
+update_theta <- function(theta_arg,n,x,y,d,alpha)
+{
+   
+  # calculate numerator of the derivative
+  numerator <- replicate(d,y)* x
+  
+   
+  # perform element-wise multiplication between theta and x,
+  # prior to getting their dot product
+  #print(dim(theta_arg))
+  #print(n)
+  #print('here is the dim of n')
+  #print(dim(matrix(replicate(n,theta_arg),nrow = n)))
+  #print(dim(x))
+  #print(n)
+  #print(head(x))
+  #print(theta_arg)
+  
+  theta_x_prod <- matrix(replicate(n,theta_arg),nrow = n) * x
+  
+  dotprod <- rowSums(theta_x_prod)
+   
+  denominator <- 1 + exp(-y * dotprod)
+   
+  # cast the denominator as a matrix
+  denominator <- replicate(d,denominator)
+   
+  dim(denominator)
+  # final step, get new theta result based off update formula
+  theta_arg <- theta_arg - alpha * colSums(numerator / denominator) 
+   
+   
+  return(theta_arg)
+   
+}
+
+get_final_theta <- function(theta,x,y,threshold,alpha=0.1,max_iter = 100)
+{
+   
+  n <- nrow(x)
+  d <- length(theta)
+   
+  first_iteration <- TRUE
+  total_iterations <- 0
+ 
+  # while the number of iterations is below the input max allowable, 
+  # update theta via gradient descent
+  new_theta <- theta
+  while(total_iterations <= max_iter)
+  {
+     
+    first_iteration <- FALSE
+     
+    # create copy of theta for comparison between new and old
+    old_theta <- new_theta
+    new_theta <- update_theta(new_theta,n,x,y,d,alpha)
+ 
+    diff_theta <- sqrt(sum((new_theta - old_theta)**2))
+ 
+    if(diff_theta < threshold) {break}
+     
+    # index the iteration number
+    total_iterations <- total_iterations + 1
+     
+  }
+   
+  # return the train theta parameter
+  return(new_theta)
+   
+}
+
+theta <-rep(0,4)
+x <- as.matrix(cbind(rep(1,dim(mydata)[1]),mydata[,c(2:4)]))
+y <- mydata$admit
+threshold <-0.0001
+final_theta <- get_final_theta(theta,x,y,threshold,alpha=0.0001,max_iter = 100000)
+print(final_theta)
+print(coef(mylogit))
+
+```
+
+
+```{r, warning=FALSE}
+theta0<-matrix(rep(0,4),ncol = 1)
+alpha <- 0.001
+y <- mydata$admit
+X <- cbind(x0,mydata[,c(2,3,4)])
+
+
+sigmoid = function(z){
+ 1 / (1 + exp(-z))
+}
+
+grad = function(X, y, theta){
+  X = as.matrix(X)
+ m = nrow(X)
+ hx = sigmoid(X %*% theta)
+ (1/m) * (t(X) %*% (hx - y))
+}
+
+maxinteration = 100000
+for (i in 1:maxinteration){
+ theta1 = theta - alpha * grad(X, y, theta)
+ if(sum(abs(theta1 - theta))/length(theta)<0.001) break
+ thetha = theta1
+}
+print(theta)
+print(coef(mylogit))
+
+
+```
+
+
+```{r}
+# solution from: https://gist.github.com/smc77/1321542
+sigmoid <- function(z) {
+return(1/(1 + exp(-z)))
+}
+
+
+mapFeature <- function(X1, X2) {
+degree <- 6
+out <- rep(1, length(X1))
+for (i in 1:degree) {
+for (j in 0:i) {
+out <- cbind(out, (X1^(i - j)) * (X2^j))
+}
+}
+return(out)
+}
+
+
+## Cost Function
+fr <- function(theta, X, y, lambda) {
+m <- length(y)
+return(1/m * sum(-y * log(sigmoid(X %*% theta)) - (1 - y) *
+log(1 - sigmoid(X %*% theta))) + lambda/2/m * sum(theta[-1]^2))
+}
+
+
+## Gradient
+grr <- function(theta, X, y, lambda) {
+return(1/m * t(X) %*% (sigmoid(X %*% theta) - y) + lambda/m *
+c(0, theta[-1]))
+}
+setwd('/Users/wenxuanzhang/LocalDoc/GitHub/R-basic')
+data <- read.csv("ex2data1.txt", header = F)
+X = as.matrix(data[,c(1,2)])
+y = data[,3]
+X = mapFeature(X[,1],X[,2])
+m <- nrow(X)
+n <- ncol(X)
+initial_theta = rep(0, n)
+lambda <- 1
+res <- optim(initial_theta, fr, grr, X, y, lambda,
+method = "BFGS", control = list(maxit = 100000))
+
+```
+
+Data Science Topics
+https://datascience.oneoffcoder.com/autograd-logistic-regression-gradient-descent.html
+
+https://nhorton.people.amherst.edu/ips9/IPS_09_Ch14.pdf
