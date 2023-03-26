@@ -1,0 +1,37 @@
+---
+title: "GLM"
+author: "Wenxuan Zhang"
+date: '2023-03-26'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Generalized Linear Regression Model
+
+|Random Component|Link Function|Systematic Component|Model|
+|:---------------:|:-------------:|:--------------------------:|
+| Normal         | Identity   | Continuouse |Regression|
+| Normal         | Identity | Categorical |Analysis of Variance|
+| Normal          | Identify | Mixed | Analysis of covariance|
+| Binomial      | Logit | Mixed | Logistic regression|
+| Binomial       | Probit and Others| Mixed | Binary regression|
+| Multinominal | Generalized Logit | Mixed | Multinominal Response|
+|Poisson | Log | Mixed | Loglinear
+
+#### Componenet of Generalized Linear Regression 
+
+**natural exponential family** 
+$$f(y_{i};\theta_{i}) = a(\theta_i)b(y_{i})exp(y_{i}Q(\theta_{i}))$$
+
+1. Logistic Regression PMF
+$$f(y;\pi) = \pi^{y}(1-\pi)^{(1-y)} = (1-\pi)[\pi/(1-\pi)^y]=(1-\pi)exp(y(log\frac{\pi}{1-\pi})$$
+Where $a(\pi) = 1 -\pi$, b(y) =1,$Q(\pi)=log(\frac{\pi}{(1-\pi)})$
+
+2. Poisson Log Linear Model for Count Data
+$$f(y;\mu) = \frac{e^{-\mu}\mu^y}{y!}= exp(-\mu)(\frac{1}{y!})exp[ylog(\mu)]$$
+here $\theta = \mu$, $a(\mu) = exp(-\mu)$, $b(y) = \frac{1}{y!}$,$y_{i} = y$, $Q(\theta)= log(\mu)$
+
+
