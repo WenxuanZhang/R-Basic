@@ -1,0 +1,129 @@
+---
+title: "Machine Learning Implementation"
+author: "Wenxuan Zhang"
+date: '2023-03-26'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Linear Regression
+
+### Local Regression 
+
+Local Regression is non parametric way to estimate the y. The basic idea of this model is :
+1. Select the closet X ( in term of similarity) and then predict a model 
+using these data.
+2. The closer data get higher weights. Common used weight,
+$$w^{i} = exp(\frac{-(x^{i}-x)^2}{2\tau^{2}})$$
+
+
+*Pros*:
+1. Do not need to construct feature 
+
+*Cons*:
+1. For large data set, it is memory costly 
+
+
+
+```{r,warning=FALSE}
+data(economics, package="ggplot2")  # load data
+economics$index <- 1:nrow(economics)  # create index variable
+economics <- economics[1:80, ]  # retail 80rows for better graphical understanding
+loessMod10 <- loess(uempmed ~ index, data=economics, span=0.10) # 10% smoothing span
+loessMod25 <- loess(uempmed ~ index, data=economics, span=0.25) # 25% smoothing span
+loessMod50 <- loess(uempmed ~ index, data=economics, span=0.50) # 
+loessMod100 <- loess(uempmed ~ index, data=economics, span=1)
+lm100 <- lm(uempmed ~ index, data = economics)
+lm1003 <- lm(uempmed ~ index+I(index^2)+I(index^3),data = economics)
+smoothed10 <- predict(loessMod10) 
+smoothed25 <- predict(loessMod25) 
+smoothed50 <- predict(loessMod50) 
+smoothed100 <- predict(loessMod100)
+lm100_d <- predict(lm100)
+lm1003_d <- predict(lm1003)
+plot(economics$uempmed, x=economics$date, type="l", main="Loess Smoothing and Prediction", xlab="Date", ylab="Unemployment (Median)")
+lines(smoothed10, x=economics$date, col="red")
+lines(smoothed25, x=economics$date, col="green")
+lines(smoothed50, x=economics$date, col="blue")
+lines(smoothed100, x=economics$date, col = "grey" )
+lines(lm100_d, x = economics$date, col = "yellow")
+lines(lm1003_d, x = economics$date, col = "purple")
+
+
+```
+
+```{r,warning=FALSE}
+if(FALSE){
+loess(formula, data, weights, subset, na.action, model = FALSE,
+      span = 0.75, enp.target, degree = 2,
+      parametric = FALSE, drop.square = FALSE, normalize = TRUE,
+      family = c("gaussian", "symmetric"),
+      method = c("loess", "model.frame"),
+      control = loess.control(...), ...)}
+
+```
+*Weight*: Optional weights for each case. 
+*Span* : the Parameter $\alpha$ control
+
+To learn more details about this model, please find (help(loess))
+
+"
+Fitting is done locally. That is, for the fit at point xx, the fit is made using points in a neighborhood of xx, weighted by their distance from xx (with differences in ‘parametric’ variables being ignored when computing the distance). The size of the neighborhood is controlled by \alpha (set by span or enp.target). For \alpha < 1, the neighborhood includes proportion \alpha of the points, and these have tricubic weighting (proportional to (1 - \mathrm{(dist/maxdist)}^3)^3(1−(dist/maxdist) 
+
+For $\alpha > 1$, all points are used, with the ‘maximum distance’ assumed to be $\alpha^{1/p}$ times the actual maximum distance for pp explanatory variables.
+
+For the default family, fitting is by (weighted) least squares. For family="symmetric" a few iterations of an M-estimation procedure with Tukey's biweight are used. Be aware that as the initial value is the least-squares fit, this need not be a very resistant fit.
+
+It can be important to tune the control list to achieve acceptable speed. See loess.control for details.
+"
+
+
+
+```{r,warning=FALSE}
+# define function that returns the SSE, 
+calcSSE <- function(x=0.5){
+  sse <- 99999
+  loessMod <- try(loess(uempmed ~ index, data=economics, span=x), silent=T)
+  res <- try(loessMod$residuals, silent=T)
+  if(class(res)!="try-error"){
+    if((sum(res, na.rm=T) > 0)){
+      sse <- sum(res^2)  
+    }}
+
+  return(sse)
+}
+
+optim(par=c(0.5), calcSSE, method="SANN")
+
+final<-0.04598782
+
+```
+
+[Local Linear Regression](http://r-statistics.co/Loess-Regression-With-R.html)
+
+```{r,warning = FALSE}
+
+library(caret)
+
+# find k fold optimization
+
+#define k-fold cross validation method
+ctrl <- trainControl(method = "cv", number = 5)
+grid <- expand.grid(span = seq(0.5, 0.9, len = 5), degree = 1)
+
+#perform cross-validation using smoothing spans ranginf from 0.5 to 0.9
+model <- train(uempmed ~ index, data = economics, method = "gamLoess", tuneGrid=grid, trControl = ctrl)
+
+#print results of k-fold cross-validation
+print(model)
+
+
+```
+
+
+
+
+
