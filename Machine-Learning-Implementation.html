@@ -363,18 +363,20 @@ display: none;
 <h3>Local Regression</h3>
 <p>Local Regression is non parametric way to estimate the y. The basic
 idea of this model is : 1. Select the closet X ( in term of similarity)
-and then predict a model using these data.</p>
+and then predict a model using these data. 2. The closer data get higher
+weights. Common used weight, <span class="math display">\[w^{i} =
+exp(\frac{-(x^{i}-x)^2}{2\tau^{2}})\]</span></p>
 <p><em>Pros</em>: 1. Do not need to construct feature</p>
 <p><em>Cons</em>: 1. For large data set, it is memory costly</p>
 <pre class="r"><code>data(economics, package=&quot;ggplot2&quot;)  # load data
-economics$index &lt;- 1:nrow(economics)  # create index variable
+economics$pce &lt;- 1:nrow(economics)  # create pce variable
 economics &lt;- economics[1:80, ]  # retail 80rows for better graphical understanding
-loessMod10 &lt;- loess(uempmed ~ index, data=economics, span=0.10) # 10% smoothing span
-loessMod25 &lt;- loess(uempmed ~ index, data=economics, span=0.25) # 25% smoothing span
-loessMod50 &lt;- loess(uempmed ~ index, data=economics, span=0.50) # 
-loessMod100 &lt;- loess(uempmed ~ index, data=economics, span=1)
-lm100 &lt;- lm(uempmed ~ index, data = economics)
-lm1003 &lt;- lm(uempmed ~ index+I(index^2)+I(index^3),data = economics)
+loessMod10 &lt;- loess(uempmed ~ pce, data=economics, span=0.10) # 10% smoothing span
+loessMod25 &lt;- loess(uempmed ~ pce, data=economics, span=0.25) # 25% smoothing span
+loessMod50 &lt;- loess(uempmed ~ pce, data=economics, span=0.50) # 
+loessMod100 &lt;- loess(uempmed ~ pce, data=economics, span=1)
+lm100 &lt;- lm(uempmed ~ pce, data = economics)
+lm1003 &lt;- lm(uempmed ~ pce+I(pce^2)+I(pce^3),data = economics)
 smoothed10 &lt;- predict(loessMod10) 
 smoothed25 &lt;- predict(loessMod25) 
 smoothed50 &lt;- predict(loessMod50) 
@@ -398,6 +400,7 @@ loess(formula, data, weights, subset, na.action, model = FALSE,
       control = loess.control(...), ...)}</code></pre>
 <p><em>Weight</em>: Optional weights for each case. <em>Span</em> : the
 Parameter <span class="math inline">\(\alpha\)</span> control</p>
+<p>To learn more details about this model, please find (help(loess))</p>
 <p>” Fitting is done locally. That is, for the fit at point xx, the fit
 is made using points in a neighborhood of xx, weighted by their distance
 from xx (with differences in ‘parametric’ variables being ignored when
@@ -417,7 +420,7 @@ speed. See loess.control for details. ”</p>
 <pre class="r"><code># define function that returns the SSE, 
 calcSSE &lt;- function(x=0.5){
   sse &lt;- 99999
-  loessMod &lt;- try(loess(uempmed ~ index, data=economics, span=x), silent=T)
+  loessMod &lt;- try(loess(uempmed ~ pce, data=economics, span=x), silent=T)
   res &lt;- try(loessMod$residuals, silent=T)
   if(class(res)!=&quot;try-error&quot;){
     if((sum(res, na.rm=T) &gt; 0)){
@@ -429,10 +432,10 @@ calcSSE &lt;- function(x=0.5){
 
 optim(par=c(0.5), calcSSE, method=&quot;SANN&quot;)</code></pre>
 <pre><code>## $par
-## [1] -23.22979
+## [1] 0.04400828
 ## 
 ## $value
-## [1] 99999
+## [1] 7.888609e-31
 ## 
 ## $counts
 ## function gradient 
@@ -461,71 +464,11 @@ ctrl &lt;- trainControl(method = &quot;cv&quot;, number = 5)
 grid &lt;- expand.grid(span = seq(0.5, 0.9, len = 5), degree = 1)
 
 #perform cross-validation using smoothing spans ranginf from 0.5 to 0.9
-model &lt;- train(uempmed ~ index, data = economics, method = &quot;gamLoess&quot;, tuneGrid=grid, trControl = ctrl)</code></pre>
+model &lt;- train(uempmed ~ pce, data = economics, method = &quot;gamLoess&quot;, tuneGrid=grid, trControl = ctrl)</code></pre>
 <pre><code>## Loading required package: gam</code></pre>
 <pre><code>## Loading required package: splines</code></pre>
 <pre><code>## Loading required package: foreach</code></pre>
 <pre><code>## Loaded gam 1.22-1</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.5, degree = 1)&quot;]], z, w, span =
-## 0.5, : eval 1</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.5, degree = 1)&quot;]], z, w, span =
-## 0.5, : lowerlimit 1.61</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.5, degree = 1)&quot;]], z, w, span =
-## 0.5, : extrapolation not allowed with blending</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.6, degree = 1)&quot;]], z, w, span =
-## 0.6, : eval 1</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.6, degree = 1)&quot;]], z, w, span =
-## 0.6, : lowerlimit 1.61</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.6, degree = 1)&quot;]], z, w, span =
-## 0.6, : extrapolation not allowed with blending</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.7, degree = 1)&quot;]], z, w, span =
-## 0.7, : eval 1</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.7, degree = 1)&quot;]], z, w, span =
-## 0.7, : lowerlimit 1.61</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.7, degree = 1)&quot;]], z, w, span =
-## 0.7, : extrapolation not allowed with blending</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.8, degree = 1)&quot;]], z, w, span =
-## 0.8, : eval 1</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.8, degree = 1)&quot;]], z, w, span =
-## 0.8, : lowerlimit 1.61</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.8, degree = 1)&quot;]], z, w, span =
-## 0.8, : extrapolation not allowed with blending</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.9, degree = 1)&quot;]], z, w, span =
-## 0.9, : eval 1</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.9, degree = 1)&quot;]], z, w, span =
-## 0.9, : lowerlimit 1.61</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.9, degree = 1)&quot;]], z, w, span =
-## 0.9, : extrapolation not allowed with blending</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.5, degree = 1)&quot;]], z, w, span =
-## 0.5, : eval 80</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.5, degree = 1)&quot;]], z, w, span =
-## 0.5, : upperlimit 79.39</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.5, degree = 1)&quot;]], z, w, span =
-## 0.5, : extrapolation not allowed with blending</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.6, degree = 1)&quot;]], z, w, span =
-## 0.6, : eval 80</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.6, degree = 1)&quot;]], z, w, span =
-## 0.6, : upperlimit 79.39</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.6, degree = 1)&quot;]], z, w, span =
-## 0.6, : extrapolation not allowed with blending</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.7, degree = 1)&quot;]], z, w, span =
-## 0.7, : eval 80</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.7, degree = 1)&quot;]], z, w, span =
-## 0.7, : upperlimit 79.39</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.7, degree = 1)&quot;]], z, w, span =
-## 0.7, : extrapolation not allowed with blending</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.8, degree = 1)&quot;]], z, w, span =
-## 0.8, : eval 80</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.8, degree = 1)&quot;]], z, w, span =
-## 0.8, : upperlimit 79.39</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.8, degree = 1)&quot;]], z, w, span =
-## 0.8, : extrapolation not allowed with blending</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.9, degree = 1)&quot;]], z, w, span =
-## 0.9, : eval 80</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.9, degree = 1)&quot;]], z, w, span =
-## 0.9, : upperlimit 79.39</code></pre>
-<pre><code>## Warning in gam.lo(data[[&quot;lo(index, span = 0.9, degree = 1)&quot;]], z, w, span =
-## 0.9, : extrapolation not allowed with blending</code></pre>
 <pre class="r"><code>#print results of k-fold cross-validation
 print(model)</code></pre>
 <pre><code>## Generalized Additive Model using LOESS 
@@ -535,15 +478,15 @@ print(model)</code></pre>
 ## 
 ## No pre-processing
 ## Resampling: Cross-Validated (5 fold) 
-## Summary of sample sizes: 64, 63, 64, 64, 65 
+## Summary of sample sizes: 64, 64, 63, 65, 64 
 ## Resampling results across tuning parameters:
 ## 
 ##   span  RMSE       Rsquared   MAE      
-##   0.5   0.3306424  0.8370207  0.2681226
-##   0.6   0.3632784  0.8066147  0.2991455
-##   0.7   0.4187567  0.7446430  0.3495032
-##   0.8   0.4870578  0.6481787  0.4082844
-##   0.9   0.5463531  0.5443861  0.4618224
+##   0.5   0.3357967  0.8468253  0.2726245
+##   0.6   0.3679344  0.8186578  0.3051458
+##   0.7   0.4209459  0.7568864  0.3512165
+##   0.8   0.4902315  0.6458565  0.4122862
+##   0.9   0.5445521  0.5421360  0.4613795
 ## 
 ## Tuning parameter &#39;degree&#39; was held constant at a value of 1
 ## RMSE was used to select the optimal model using the smallest value.

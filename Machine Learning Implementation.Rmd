@@ -44,14 +44,32 @@ smoothed50 <- predict(loessMod50)
 smoothed100 <- predict(loessMod100)
 lm100_d <- predict(lm100)
 lm1003_d <- predict(lm1003)
-plot(economics$uempmed, x=economics$date, type="l", main="Loess Smoothing and Prediction", xlab="Date", ylab="Unemployment (Median)")
-lines(smoothed10, x=economics$date, col="red")
-lines(smoothed25, x=economics$date, col="green")
-lines(smoothed50, x=economics$date, col="blue")
-lines(smoothed100, x=economics$date, col = "grey" )
-lines(lm100_d, x = economics$date, col = "yellow")
-lines(lm1003_d, x = economics$date, col = "purple")
 
+print(paste('MSE: model smoothed10:',round(mean((economics$uempmed-smoothed10)^2),2)))
+print(paste('MSE: model smoothed25:',round(mean((economics$uempmed-smoothed25)^2),2)))
+print(paste('MSE: model smoothed50:',round(mean((economics$uempmed-smoothed50)^2),2)))
+print(paste('MSE: model smoothed100:',round(mean((economics$uempmed-smoothed100)^2),2)))
+print(paste('MSE: model lm:',round(mean((economics$uempmed-lm100_d)^2),2)))
+print(paste('MSE: model lm 1003:',round(mean((economics$uempmed-lm1003_d)^2),2)))
+
+
+# create data frame,
+pred <- as.numeric(c(economics$uempmed,smoothed10,
+              smoothed25,smoothed50,
+              smoothed100,lm100_d,
+              lm1003_d))
+date <-rep(economics$date,7)
+n_obs <- dim(economics)[1]
+type = c(rep('actual',n_obs),
+         rep('loessMod10',n_obs),
+         rep('loessMod25',n_obs),
+         rep('loessMod50',n_obs),
+         rep('loessMod100',n_obs),
+         rep('lm100',n_obs),
+         rep('lm1003',n_obs))
+eco_models <- data.frame(date = date, value = pred,type = type)
+
+ggplot(data = eco_models, aes(date, value, group = type, color = type),main = 'Loess Smoothing and Prediction') + geom_line()
 
 ```
 
