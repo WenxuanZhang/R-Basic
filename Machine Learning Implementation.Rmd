@@ -10,6 +10,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Linear Regression
+```{r}
+
+```
 
 ### Local Regression 
 
@@ -29,6 +32,7 @@ $$w^{i} = exp(\frac{-(x^{i}-x)^2}{2\tau^{2}})$$
 
 
 ```{r,warning=FALSE}
+library(ggplot2)
 data(economics, package="ggplot2")  # load data
 economics$index <- 1:nrow(economics)  # create index variable
 economics <- economics[1:80, ]  # retail 80rows for better graphical understanding
@@ -142,6 +146,53 @@ print(model)
 ```
 
 
+Logistic regression makes weaker assumptions and is significantly more robust to deviation from modeling assumptions.GDA makes stronger modeling assumptions and is more data efficient when the model assumption is correct or approximately correct.
+
+GDA (Gaussian Discriminative Analysis)
+
+$$P(x - N(\sigma,\mu) |y = 0)$$
+$$P(x - N(\sigma,\mu) |y = 1)$$
+### Logistic Regression/Probit Regression/Multi-Logit Regression
+```{r}
+
+```
+
+### LDA/GDA
+
+```{r}
+```
 
 
+### Navie Bayes
+
+```{r,warning= FALSE}
+
+#first thing to try 
+
+```
+
+
+### Kernel Method 
+
+```{r}
+
+```
+
+### SVM 
+
+```{r}
+
+```
+
+
+### Tree Models 
+```{r}
+
+```
+
+
+### Reference
+[Rmarkdown - the definitive Guide](https://bookdown.org/yihui/rmarkdown/markdown-syntax.html)
+[Distilled AI](https://aman.ai/cs229/newton-method/)
+[SparkR](https://sparkbyexamples.com/r-programming/how-to-select-columns-in-r/)
 

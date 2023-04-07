@@ -49,3 +49,9 @@ $$ -2[L(\mu;y) - L(y;y)]$$
 * fitting process maximize the likelihood for the choice of distribution Y, andL that choice is not restrict to normality
 
 Canonical Link
+
+
+
+
+https://sparkbyexamples.com/r-programming/how-to-select-columns-in-r/
+
