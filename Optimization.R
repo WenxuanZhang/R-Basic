@@ -14,3 +14,5 @@ const.rhs <- c(1800,8)
 const.dir <- c("<=","<=")
 optimum <- lp(direction = "max", object.in,
               const.mat,const.dir,const.rhs)
+
+

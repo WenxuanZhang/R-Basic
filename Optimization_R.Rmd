@@ -322,7 +322,7 @@ xtabs(~admit + rank, data = mydata)
 mylogit <- glm(admit ~ gre + gpa + rank, data = mydata, family = "binomial")
 summary(mylogit)
 confint(mylogit)
-wald.test(b = coef(mylogit), Sigma = vcov(mylogit), Terms = 4:6)
+#wald.test(b = coef(mylogit), Sigma = vcov(mylogit), Terms = 4:6)
 exp(coef(mylogit))
 
 pred <- ifelse(predict(mylogit,data = mydata,type = "response")>0.34,1,0)
@@ -416,6 +416,7 @@ https://theautomatic.net/2018/10/02/how-to-build-a-logistic-regression-model-fro
 theta0<-matrix(rep(0,4),ncol = 1)
 alpha <- 0.001
 y <- mydata$admit
+x0 <- rep(a,dim(mydata)[1])
 X <- cbind(x0,mydata[,c(2,3,4)])
 
 
@@ -441,7 +442,28 @@ print(coef(mylogit))
 
 
 ```
+##### Optimization with objective function with exponential term
+```{r}
 
+library(CVXR)
+a <- 7
+b <- 0.3
+M=1000
+x_i # is a given vector of 1-D data
+
+x <- Variable(1)
+nominator <- (1-x)
+#denominator <- (1/((a^(1-x))-(b^(1-x))))
+
+denominator <- 1/(exp(log(a)*(1-x)) - exp(log(b)*(1-x)))
+
+obj <- (-x*sum(log(x)) + M*log(nominator/denominator)) # change M to the length of X_i later
+constr <- list(x>=0)
+prob <- Problem(Maximize(obj), constr)
+result <- solve(prob)
+alpha_hat <- result$getValue(x)
+
+```
 
 
 
@@ -452,5 +474,16 @@ https://datascience.oneoffcoder.com/autograd-logistic-regression-gradient-descen
 https://nhorton.people.amherst.edu/ips9/IPS_09_Ch14.pdf
 
 https://rpubs.com/junworks/Understanding-Logistic-Regression-from-Scratch
+
+https://stackoverflow.com/questions/64707768/how-to-solve-an-objective-function-having-an-exponential-term-with-a-different-b
+
+https://docs.mosek.com/modeling-cookbook/expo.html
+
+
+https://gurobi.github.io/modeling-examples/marketing_campaign_optimization/marketing_campaign_optimization.html
+
+https://gurobi.github.io/modeling-examples/
+
+
 
 
