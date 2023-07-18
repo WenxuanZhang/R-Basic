@@ -1,0 +1,361 @@
+---
+title: "Time Series Model"
+author: "Wenxuan Zhang"
+date: "2023-07-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Time Series 
+
+A time series is data recorded by time order. A  time series can be decompose into three components : seasonality, trend and white noise in a multiplicative or additive way.
+
+
+```{r cars}
+library(ggplot2)
+library(forecast)
+AP <- AirPassengers
+autoplot(AP, colour = "dodgerblue4") +
+  ggtitle(" Air Passenger Per Month 1949-1960") + 
+  ylab("Passenger (000)") + 
+  theme_classic()
+
+```
+
+```{r}
+boxplot(AP~cycle(AP),xlab="Date", ylab = "Passenger Numbers (1000's)" ,main ="Monthly Air Passengers Boxplot from 1949 to 1960")
+
+```
+Per the plot chart data, there is an upward trend year over year. Per the boxplot, there is significant more people travel from Jun - Sep. There are both seaonality and trend in this data set and it is not stationary. 
+
+```{r}
+decomposeAP <- decompose(AP,"multiplicative")
+autoplot(decomposeAP)
+```
+Decomposition could be used for future prediction. 
+```{r}
+
+decomposeAP%>% seasadj() %>% naive() %>%
+  autoplot() + ylab("New orders index") +
+  ggtitle("Naive forecasts of seasonally adjusted data")
+
+sf <- decomposeAP%>% seasadj() %>% naive(h=12) 
+
+#add back seasonal term 
+season_pattern <- decomposeAP$seasonal[1:12]
+
+sf$mean <- sf$mean * season_pattern
+sf$upper <- sf$upper*c(season_pattern,season_pattern)
+sf$lower <-sf$lower*c(season_pattern,season_pattern)
+
+
+sf %>% autoplot() + ylab("Passenger 000") +
+  ggtitle("forecasts of seasonally adjusted data")
+
+```
+A stationary time series has the conditions that the mean, variance and covariance are not functions of time. In order to fit arima models, the time series is required to be stationary. We will use two methods to test the stationarity.
+
+*1. Test stationarity of the time series (ADF)*
+
+In order to test the stationarity of the time series, let’s run the Augmented Dickey-Fuller Test using the adf.test function from the tseries R package.
+
+First set the hypothesis test:
+
+The null hypothesis H0
+ : that the time series is non stationary
+The alternative hypothesis HA
+ : that the time series is stationary
+ 
+```{r}
+library(tseries)
+adf.test(AP) 
+# we can  reject the null hypothesis that air passenger data is non-stationary
+kpss.test(AP)
+
+#remove seasonality
+par(mfrow=c(2,2))
+plot(AP, main = 'Air Passenger Original')
+AP_ds <- diff(AP,lag = 12)
+plot(AP_ds, main = 'De Seasonal')
+kpss.test(AP_ds)
+AP_d1 <- diff(AP_ds)
+plot(AP_d1, main = 'De Seasonal - 1st Order')
+kpss.test(AP_d1)
+AP_d2 <- diff(AP_d1)
+plot(AP_d2, main = 'De Seasonal - 2nd Order')
+kpss.test(AP_d2)
+
+#get order
+par(mfrow=c(1,2))
+acf(AP_d1)
+pacf(AP_d1)
+
+best.model <- auto.arima(AP)
+```
+ 2. Test stationarity of the time series (Autocorrelation)
+
+```{r}
+
+# order 1 AR
+# order 2 AR 
+# order 1 MA
+# order 2 MA
+
+# acf function 
+
+acf_calc<-function(ts,k=1){
+ts <- AP_d1
+n <- length(ts)
+ts_mean <- mean(AP_d1)
+var_t <- var(ts)
+t1 <- ts[c(1:(n-k))]
+t2 <- ts[c((k+1):n)]
+
+rk = sum((t1 - ts_mean)*(t2 - ts_mean))/sum((ts-ts_mean)^2)
+
+return(rk)
+}
+acf_info <- acf(AP_d1)
+acf_info$acf[2]
+
+# function to calculate PACF
+# AP_d1
+n <- length(AP_d1)
+k <- 1
+
+t1 <- AP_d1[c(1:(n-k))]
+t2 <- AP_d1[c((k+1):n)]
+
+# get error
+fit_model <- lm(t2~t1)
+res <- fit_model$residuals
+cor(res,t2)
+
+
+res2 <- res[c(1:(length(res)-k))]
+res1 <- res[c((k+1):length(res))]
+
+sum((res2 - mean(AP_d1))*(res1 - mean(AP_d1)))/sum((AP_d1-mean(AP_d1))^2)
+
+
+# pacf
+pacf_info <- pacf(AP_d1)
+#pacf_info$acf[1]
+pacf_info$acf[2]
+
+# order 0 pacf , y_t and y_t-1 corr, do not consider 
+# order 1 ma
+
+
+
+
+```
+
+```{r}
+library(ggplot2)
+autoplot(acf(AP,plot=FALSE))+ labs(title="Correlogram of Air Passengers from 1949 to 1961") 
+
+```
+
+
+## ARIMA(p,d,q): Autoregressive integrated moving average
+
+ARIMA model, full name autoregressive intergrated moving average, it a time series model that leverage previous information to predict the future. 
+
+ARIMA is applicable to any 'non-seasonal' time series that exhibits patterns and is not a **random white noise** can be modeled with ARIMA models.
+
+* p: order of AR term
+* q: order of MA term
+* d: number of differencing required to make time series stationary
+
+If you need to add seasonal terms in it becomes SARIMA, short for seasonal ARIMA.
+
+**Auto Regressive Model**
+
+$$Y_t = \alpha + \beta_1Y_{t-1} + \beta_2Y_{t-2} + ... + \beta_pY_{t-p}+\epsilon_1$$
+```{r}
+#example : y_t = 1 + 0.5*y_t-1 + error_t  
+error <- rnorm(100,0,1)
+y_0 <- 0
+beta_0 <- 0.5
+y <- y_0 + error[1]
+y_new <- y_0 + error[1]
+
+for( i in c(2:100)){
+  y_new <- 0.5*y_new+error[i]
+  y <- c(y,y_new)
+}
+
+y <- y + 1
+
+plot(y,type = 'l', main = 'y_t = 1 + 0.5*y_t-1 + error_t')
+
+arima(y,c(1,0,0))
+arima(y,c(0,0,1))
+
+
+```
+
+
+**Moving Average Model**
+$$Yt = \alpha + \epsilon_{t} + \phi_1\epsilon_{t-1} + \phi_2\epsilon_{t-2}+  + \phi_q\epsilon_{t-q}$$
+
+The $\epsilon_t$ and $\epsilon_{t-1}$ comes from the following equations:
+
+$$Y_t = \beta_1Y_{t-1} + \beta_2Y_{t-2}+.. + \beta_0Y_0 + \epsilon$$
+$$Y_{t-1} = \beta_1 Y_{t-2} + \beta_2Y_{t-3}+..+\beta_0Y_0 + \epsilon$$
+Moving average models are linear combinations of past white noise terms (past forecast error), while autoregressive models are linear combinations of past time series values.Fitting a moving-average model is generally more complicated than fitting an autoregressive model.This is because the lagged error terms are not observable. 
+
+Here is two examples of Moving Average Process.
+
+$$y_t = 20 + \epsilon_t + 0.8\epsilon_{t-1}$$
+$$y_t = \epsilon_t -\epsilon_{t-1}+0.8\epsilon_{t-2}$$
+```{r}
+m1 <- 0 
+sd1 <- 1
+n <- 100
+
+error_t<- rnorm(n,mean = m1, sd = sd1 )
+
+error_t_1 <- error_t[c(1:n-1)]
+y_t <- 20 + error_t[2:n]+0.8*error_t_1
+
+plot(c(1:99),y_t,type = 'l',ylab = 'Error Std  = 1' )
+
+par(mfrow=c(1,2))
+acf(y_t)
+pacf(y_t)
+
+```
+
+```{r}
+m1 <- 0 
+sd1 <- 2
+n <- 100
+
+error_t<- rnorm(n,mean = m1, sd = sd1 )
+
+error_t_1 <- error_t[c(1:n-1)]
+y_t <- 20 + error_t[2:n]+0.8*error_t_1
+
+plot(c(1:99),y_t,type = 'l',ylab = 'Error Std  = 2' )
+
+par(mfrow=c(1,2))
+acf(y_t)
+pacf(y_t)
+
+```
+
+```{r}
+t_2 <- error_t[1:(n-2)]
+t_1 <- error_t[2:c(n-1)]
+t <- error_t[3:n]
+
+y2 <- t - t_1 + 0.8*t_2
+
+plot(c(1:98),y2,type = 'l')
+
+
+
+```
+
+Change the variance of error term will only change the scale data, but it will not change its pattern. Change $\theta$ will change the pattern of the data.
+
+### Link between AR and MA process
+It is possible to write any stationary AR(p) model as an MA(inf) model. 
+$$ y_t = \phi y_{t-1} + \epsilon_t$$
+$$y_t = \phi_1(\phi_1*y_{t-2} + \epsilon_{t-1}) + \epsilon_t $$
+$$ y_t = \phi_1^2y_{t-2} + \phi_1*\epsilon_{t-1} + \epsilon_{t}$$
+$$y_t = \phi_1^2*(\phi_1*y_{t-3}+\epsilon_{t-2})+\phi_2*\epsilon_{t-1}+\epsilon_t$$
+$$y_t = \phi^3y_{t-3} + \phi^2\epsilon_{t-2} + \phi_{1}\epsilon_{t-1} + \epsilon_t$$
+Given -1 < $\phi_1<1$ the value of $\phi_1^k$ will converge to zero, eventually we will obtain
+$$y_t = \epsilon_t + \phi_1\epsilon_{t-1} + \phi_1^2\epsilon_{t-2} + \phi_3^3\epsilon_{t-3}$$
+
+
+*ARIMA*  is the commbination of both. 
+
+$$Y_t = \alpha + \beta_1Y_{t-1}+\beta_2Y_{t-2} + \beta_{p}Y_{t-p}+\epsilon_t + .. + \phi_1\epsilon_{t-1}+\phi_2\epsilon_{t-2}+.. +\phi_q\epsilon_{t-q}$$
+Predicted Yt = Constant + Linear Combination of Lags of Y (up to p lags) + Linear combination of lagged forecast error (up to q lages).
+
+The goal is ti identify, p,q,d. 
+
+
+```{r}
+
+ma1.sim <- arima.sim(list(order = c(0,0,1), ma = 0.5), n = 200)
+par(mfrow=c(1,2))
+acf(ma1.sim)
+pacf(ma1.sim)
+
+
+ar1.sim <- arima.sim(list(order = c(1,0,0), ar = 0.5), n = 200)
+par(mfrow=c(1,2))
+acf(ar1.sim)
+pacf(ar1.sim)
+
+par(mfrow=c(1,2))
+acf(AP_d1)
+pacf(AP_d1)
+ts_model <- arima(AP_d1, order = c(2,0,1))
+ts_model_2 <- arima(AP_d1, order = c(3,0,1))
+
+Box.test(ts_model$residuals,type = "Ljung")
+
+fitted_values <- AP_d1 - ts_model$residuals
+par(mfrow=c(1,1))
+
+plot(AP_d1,type = 'l')
+lines(fitted_values, type ='l',col = 'blue')
+
+auto.model <- auto.arima(AP)
+plot(AP,type = 'l')
+lines(auto.model$fitted, type ='l',col = 'blue')
+
+auto.model %>% forecast(h=12) %>% autoplot()
+
+```
+
+```{r}
+
+arimaAP <- auto.arima(AP)
+arimaAP
+
+```
+```{r}
+library(ggfortify)
+
+ggtsdiag(arimaAP)
+
+
+```
+## Forecast
+```{r}
+forecastAP <- forecast(arimaAP, level = c(95), h = 36)
+autoplot(forecastAP)
+
+```
+
+## Seasonal ARIMA: SARIMAR
+
+
+## Reference 
+1. [Forecasting: Principles and Practice](https://otexts.com/fpp2/MA.html)
+2. [Defining the Moving Average Model for Time Series Forecasting in Python](https://towardsdatascience.com/defining-the-moving-average-model-for-time-series-forecasting-in-python-626781db2502)
+3. [A short Guide to Time Series Analysis](https://bookdown.org/JakeEsprabens/431-Time-Series/modelling-time-series.html)
+4. [Time Series Analysis](chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://mfe.baruch.cuny.edu/wp-content/uploads/2014/12/TS_Lecture1_2019.pdf)
+
+5. [ARIMA models for time series forecasting - Duke Univeristy bob nau](https://people.duke.edu/~rnau/arimrule.htm)
+
+6. [R Cookbook 2nd Edition](https://rc2e.com/timeseriesanalysis)
+
+7. [Time Series Analysis and Modeling with the Air Passengers Dataset](http://rstudio-pubs-static.s3.amazonaws.com/311446_08b00d63cc794e158b1f4763eb70d43a.html)
+
+8. [Stationarity in time series analysis](https://towardsdatascience.com/stationarity-in-time-series-analysis-90c94f27322)
+
+9. [Applied Time Series Analysis for Fisheries and Environmental Sciences](https://atsa-es.github.io/atsa-labs/sec-tslab-decomposition-of-time-series.html)
+
+10. [Time Series Analysis: Identifying AR and MA using ACF and PACF Plots](https://towardsdatascience.com/identifying-ar-and-ma-terms-using-acf-and-pacf-plots-in-time-series-forecasting-ccb9fd073db8)
+

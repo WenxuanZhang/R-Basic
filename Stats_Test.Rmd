@@ -1,0 +1,119 @@
+---
+title: "Stats_Test"
+author: "WenxuanZhang"
+date: "July 11, 2023"
+output: html_document
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+
+```
+
+##  z test 
+
+z test is a statistical test where the test statistics approximate normal distribution. The difference between z test and t test is :
+
+* z test: population variance known or sample size ( n > 30, could vary)
+* t test: population variance unknown or sample size (n < 30, could vary)
+
+test statistics for z test is :
+
+$$Z = \frac{\bar X - \mu_0}{s/sqrt(n)}$$
+Assuming we know the Human IQ mean as 100 with a std deviation 16. A scientist want to know the effect of certain drug on people.
+
+```{r}
+library(BSDA)
+
+IQ_data <- c(89, 98,113, 115, 119, 134,87, 76,100, 150, 89,90,94,96)
+
+z.test(IQ_data, mu=100, sigma.x=16)
+
+test.data <- z.test(IQ_data, mu=100, sigma.x=16)
+# when there are multiple points
+zscore <- (mean(IQ_data)-100)/(16/sqrt(length(IQ_data)))
+pnorm(zscore)
+# as this is double sided test,
+# pvalue = 2 * pnorm(zscore)
+# there is no significant difference between the mean of IQ of test group vs. population mean 
+#
+
+# 2 sample z test 
+
+```
+
+##  t test 
+##  pairded t test 
+##  f test
+##  anova
+
+Analysis of variance, in a simple way, is a collection of statistical method that compares whether the mean of two or more group are euqal.
+
+Below is an example of annova analysis under completely random experiment design [data](https://www.fao.org/3/X6831E/X6831E07.htm#)
+
+| Group         |  Degree of Freedom | Sum of Squares |Mean of Squares | F |
+|---------------|:-------------:|------:|---------: |-----:|
+| treatment     | t - 1         |  SST     |  SST/t-1 |     MST/MSE  |
+| error         | n - t         |   SSE    |  SSE/n-1  |       |
+| total         | n-1           |   SSTO    |          |        |  
+
+```{r}
+# example
+
+aov.model <- aov( Sepal.Length ~ Species, data = iris)
+summary(aov.model)
+
+#                Df Sum Sq Mean Sq F value Pr(>F)    
+#   Species       2  63.21  31.606   119.3 <2e-16 ***
+#   Residuals   147  38.96   0.265                   
+#  ---
+# Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+#calculate the variance by your self
+
+ssto <- sum((iris$Sepal.Length-mean(iris$Sepal.Length))^2)
+mean_group <- iris %>% group_by(Species) %>% summarise(mean_length = mean(Sepal.Length))  
+iris_1 <- iris %>% left_join(mean_group, by = c('Species'))  
+
+sst <- sum((iris_1$mean_length- mean(iris_1$Sepal.Length))^2)
+
+sse <- ssto - sst 
+
+mst <- sst/2
+mse <-  sse/(length(iris$Sepal.Length)-3)
+f_stat <- mst/mse
+
+
+
+
+```
+
+Anova only informs you there are difference among groups but it does not provide information on which group is significantly different from which. Thus, Tukey Honestly Significant Difference Test comes to help. 
+```{r}
+TukeyHSD(aov.model)
+
+```
+
+##  manova
+
+```{r}
+sepl <- iris$Sepal.Length
+petl <- iris$Petal.Length
+# MANOVA test
+res.man <- manova(cbind(Sepal.Length, Petal.Length) ~ Species, data = iris)
+summary(res.man)
+summary.aov(res.man)
+
+
+```
+
+
+# Reference
+
+1. [T test vs. Z test when to use each](https://www.wikihow.com/T-Test-vs-Z-Test)
+2. [How to Perform One Sample & Two Sample Z-Tests in R](https://www.statology.org/z-test-in-r/)
+3. [Experiment Design](https://www.fao.org/3/X6831E/X6831E00.htm#TOC)
+4. [One-Way MANOVA in R](https://www.datanovia.com/en/lessons/one-way-manova-in-r/)
+
+

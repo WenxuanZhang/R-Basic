@@ -487,7 +487,7 @@ optimx(par,fn, method  = &#39;Nelder-Mead&#39;)</code></pre>
 ## Nelder-Mead -1   -53    211     NA    NA       10   NA   NA 0.002</code></pre>
 <pre class="r"><code>optimx(par, fn, method = &#39;CG&#39;)</code></pre>
 <pre><code>##    p1         value fevals gevals niter convcode kkt1 kkt2 xtime
-## CG NA 8.988466e+307     NA     NA    NA     9999   NA   NA 0.001</code></pre>
+## CG NA 8.988466e+307     NA     NA    NA     9999   NA   NA     0</code></pre>
 <pre class="r"><code>optimx(par,fn, method = &#39;BFGS&#39;)</code></pre>
 <pre><code>##      p1         value fevals gevals niter convcode kkt1 kkt2 xtime
 ## BFGS NA 8.988466e+307     NA     NA    NA     9999   NA   NA 0.001</code></pre>
@@ -501,7 +501,7 @@ optimx(par,fn, method  = &#39;Nelder-Mead&#39;)</code></pre>
 ##             xtime
 ## Nelder-Mead 0.002
 ## CG          0.001
-## BFGS        0.000
+## BFGS        0.001
 ## spg         0.000
 ## nlm         0.004</code></pre>
 <pre class="r"><code>#-1 should be the optimal value to minimize this target</code></pre>
@@ -559,16 +559,16 @@ library(quadprog)
 s &lt;- solve.QP(t(X) %*% X, t(y)%*%X, matrix(nr = 3, nc = 0),numeric(),0)
 coef(r)</code></pre>
 <pre><code>## (Intercept)          x1          x2 
-##   0.9236640   1.0349736   0.8915766</code></pre>
+##    1.023172    1.039217    1.151398</code></pre>
 <pre class="r"><code>s$solution</code></pre>
-<pre><code>## [1] 0.9236640 1.0349736 0.8915766</code></pre>
+<pre><code>## [1] 1.023172 1.039217 1.151398</code></pre>
 <pre class="r"><code># with constraints =&gt; yes, you could set constriant &gt;=
 s1 &lt;- solve.QP(t(X) %*% X, t(y)%*%X, cbind(diag(1,3)),c(0.5,1.5,2),0)
 s1$solution</code></pre>
-<pre><code>## [1] 1.119535 1.500000 2.000000</code></pre>
+<pre><code>## [1] 1.171022 1.500000 2.000000</code></pre>
 <pre class="r"><code>s2 &lt;- solve.QP(t(X) %*% X, t(y)%*%X, cbind(diag(1,3),-diag(1,3)),c(0.5,0.5,0.5,-0.8,-1.1,-1.2),0)
 s2$solution</code></pre>
-<pre><code>## [1] 0.8000000 1.0268086 0.8748106</code></pre>
+<pre><code>## [1] 0.800000 1.009566 1.133046</code></pre>
 </div>
 <div id="optimization-inside-quantile-regression" class="section level3">
 <h3>Optimization inside Quantile Regression</h3>
@@ -585,9 +585,9 @@ r &lt;- lp(&#39;min&#39;,
         c(rep (&quot;&gt;=&quot;,2*n),rep(&quot;=&quot;,n)),
         c(rep(0, 2*n),x))
 tail(r$solution,1)</code></pre>
-<pre><code>## [1] 0.9293532</code></pre>
+<pre><code>## [1] 0.8835516</code></pre>
 <pre class="r"><code>median(x)</code></pre>
-<pre><code>## [1] 0.9293532</code></pre>
+<pre><code>## [1] 0.8835516</code></pre>
 <p>Introducing tau = .3 allows to calculate quantile regression</p>
 <pre class="r"><code>require(lpSolve)
 tau &lt;- .3
@@ -607,7 +607,7 @@ r &lt;- lp(&quot;min&quot;,c(rep(tau,n),
     )
 
 tail(r$solution,3)</code></pre>
-<pre><code>## [1] 0.3179580 0.9559793 0.8124699</code></pre>
+<pre><code>## [1] 0.1725398 0.8444317 1.0086881</code></pre>
 <pre class="r"><code>library(quantreg)</code></pre>
 <pre><code>## Loading required package: SparseM</code></pre>
 <pre><code>## 
@@ -621,7 +621,7 @@ tail(r$solution,3)</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)          x1          x2 
-##   0.9798754   0.9783067   0.7363249 
+##   0.9127520   0.8015468   1.0754576 
 ## 
 ## Degrees of freedom: 100 total; 97 residual</code></pre>
 <p><a href="https://web.stanford.edu/class/archive/cs/cs109/cs109.1166/pdfs/40%20LogisticRegression.pdf" class="uri">https://web.stanford.edu/class/archive/cs/cs109/cs109.1166/pdfs/40%20LogisticRegression.pdf</a></p>
@@ -861,9 +861,39 @@ print(theta)</code></pre>
 <pre class="r"><code>print(coef(mylogit))</code></pre>
 <pre><code>## (Intercept)         gre         gpa        rank 
 ## -3.44954840  0.00229396  0.77701357 -0.56003139</code></pre>
+<div id="optimization-with-objective-function-with-exponential-term" class="section level5">
+<h5>Optimization with objective function with exponential term</h5>
+<pre class="r"><code>if(FALSE){
+library(CVXR)
+a &lt;- 7
+b &lt;- 0.3
+M=1000
+ # is a given vector of 1-D data
+
+x &lt;- Variable(1)
+nominator &lt;- (1-x)
+#denominator &lt;- (1/((a^(1-x))-(b^(1-x))))
+
+denominator &lt;- 1/(exp(log(a)*(1-x)) - exp(log(b)*(1-x)))
+
+obj &lt;- (-x*sum(log(x)) + M*log(nominator/denominator)) # change M to the length of X_i later
+constr &lt;- list(x&gt;=0)
+prob &lt;- Problem(Maximize(obj), constr)
+result &lt;- solve(prob)
+alpha_hat &lt;- result$getValue(x)
+}</code></pre>
 <p>Data Science Topics <a href="https://datascience.oneoffcoder.com/autograd-logistic-regression-gradient-descent.html" class="uri">https://datascience.oneoffcoder.com/autograd-logistic-regression-gradient-descent.html</a></p>
 <p><a href="https://nhorton.people.amherst.edu/ips9/IPS_09_Ch14.pdf" class="uri">https://nhorton.people.amherst.edu/ips9/IPS_09_Ch14.pdf</a></p>
 <p><a href="https://rpubs.com/junworks/Understanding-Logistic-Regression-from-Scratch" class="uri">https://rpubs.com/junworks/Understanding-Logistic-Regression-from-Scratch</a></p>
+<p><a href="https://stackoverflow.com/questions/64707768/how-to-solve-an-objective-function-having-an-exponential-term-with-a-different-b" class="uri">https://stackoverflow.com/questions/64707768/how-to-solve-an-objective-function-having-an-exponential-term-with-a-different-b</a></p>
+<p><a href="https://docs.mosek.com/modeling-cookbook/expo.html" class="uri">https://docs.mosek.com/modeling-cookbook/expo.html</a></p>
+<p><a href="https://gurobi.github.io/modeling-examples/marketing_campaign_optimization/marketing_campaign_optimization.html" class="uri">https://gurobi.github.io/modeling-examples/marketing_campaign_optimization/marketing_campaign_optimization.html</a></p>
+<p><a href="https://gurobi.github.io/modeling-examples/" class="uri">https://gurobi.github.io/modeling-examples/</a></p>
+<p>optimization in python</p>
+<p><a href="https://stackoverflow.com/questions/70165161/gekko-dynamic-optimisation-with-lagged-variable-in-objective" class="uri">https://stackoverflow.com/questions/70165161/gekko-dynamic-optimisation-with-lagged-variable-in-objective</a></p>
+<p><a href="https://apmonitor.com/do/" class="uri">https://apmonitor.com/do/</a></p>
+<p><a href="https://cran.r-project.org/web/views/Optimization.html" class="uri">https://cran.r-project.org/web/views/Optimization.html</a></p>
+</div>
 </div>
 
 

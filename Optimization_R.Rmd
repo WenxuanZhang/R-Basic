@@ -443,29 +443,32 @@ print(coef(mylogit))
 
 ```
 ##### Optimization with objective function with exponential term
+
+
 ```{r}
 
-library(CVXR)
-a <- 7
-b <- 0.3
-M=1000
-x_i # is a given vector of 1-D data
+library(optimx)
+xdata<-seq_len(100)
+ydata<-2*exp(-2*(xdata+rnorm(100)))
 
-x <- Variable(1)
-nominator <- (1-x)
-#denominator <- (1/((a^(1-x))-(b^(1-x))))
+#Fit exponential model to data
+firstorder<-function(C0,k){
+ ynew<-C0*exp(-k*xdata)
+ RMSE<-sum((ynew-ydata)^2,na.rm=TRUE)
+ return(RMSE)
+}
 
-denominator <- 1/(exp(log(a)*(1-x)) - exp(log(b)*(1-x)))
+#Initial parameter values
+params<-c(1,1)
 
-obj <- (-x*sum(log(x)) + M*log(nominator/denominator)) # change M to the length of X_i later
-constr <- list(x>=0)
-prob <- Problem(Maximize(obj), constr)
-result <- solve(prob)
-alpha_hat <- result$getValue(x)
+#Optimize
+optimx(params, function(x) firstorder(x[1], x[2]))
 
 ```
 
+```{r}
 
+```
 
 
 Data Science Topics
@@ -484,6 +487,20 @@ https://gurobi.github.io/modeling-examples/marketing_campaign_optimization/marke
 
 https://gurobi.github.io/modeling-examples/
 
+
+optimization in python 
+
+https://stackoverflow.com/questions/70165161/gekko-dynamic-optimisation-with-lagged-variable-in-objective
+
+https://apmonitor.com/do/
+
+https://cran.r-project.org/web/views/Optimization.html
+
+[Optimisation of a Logistic Regression Model using Optimx in R](https://www.r-bloggers.com/2020/05/optimisation-of-a-logistic-regression-model-using-optimx-in-r/)
+
+[Solvers in R](https://palomar.home.ece.ust.hk/MAFS6010R_lectures/Rsession_solvers.html#cvxr_for_convex_problems)
+
+[Exploring options among open source solvers](https://www.gurobi.com/resources/open-source-linear-and-mixed-integer-programming-software-and-solvers/)
 
 
 
